@@ -40,7 +40,7 @@ sentry = { version = "0.34.0", features = [
 	"debug-images",
 ] }
 
-cidre = { git = "https://github.com/yury/cidre", rev = "3479c18b9ac81dbb15d0acb3a75edd6b42d044b1" }
+cidre = { git = "https://github.com/tolotrasamuel/cidre" }
 
 windows = "0.58.0"
 windows-sys = "0.59.0"
