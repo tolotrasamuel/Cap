@@ -1623,20 +1623,32 @@ export function ConfigSidebar() {
                 />
               </Field>
               <Field name="Zoom Mode" icon={<IconCapSettings />}>
-                <KTabs class="space-y-6">
+                <KTabs
+                  class="space-y-6"
+                  value={value().segment.mode === "auto" ? "auto" : "manual"}
+                  onChange={(mode) => {
+                    setProject(
+                      "timeline",
+                      "zoomSegments",
+                      value().selection.index,
+                      "mode",
+                      mode === "auto" ? "auto" : {
+                        // type: "manual",
+                        manual: { x: 0.5, y: 0.5 }
+                      }
+                    );
+                  }}
+                >
                   <KTabs.List class="flex flex-row items-center rounded-[0.5rem] relative border">
                     <KTabs.Trigger
                       value="auto"
                       class="z-10 flex-1 py-2.5 text-gray-400 transition-colors duration-100 outline-none ui-selected:text-gray-500 peer"
-                      // onClick={() => setSelectedTab(item.id)}
-                      disabled
                     >
                       Auto
                     </KTabs.Trigger>
                     <KTabs.Trigger
                       value="manual"
                       class="z-10 flex-1 py-2.5 text-gray-400 transition-colors duration-100 outline-none ui-selected:text-gray-500 peer"
-                      // onClick={() => setSelectedTab(item.id)}
                     >
                       Manual
                     </KTabs.Trigger>
@@ -1644,6 +1656,11 @@ export function ConfigSidebar() {
                       <div class="flex-1 bg-gray-100" />
                     </KTabs.Indicator>
                   </KTabs.List>
+                  <KTabs.Content value="auto" tabIndex="">
+                    <div class="text-gray-500 text-sm">
+                      Auto zoom will intelligently focus on important content.
+                    </div>
+                  </KTabs.Content>
                   <KTabs.Content value="manual" tabIndex="">
                     <Show
                       when={(() => {
