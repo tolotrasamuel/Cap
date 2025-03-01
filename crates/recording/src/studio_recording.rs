@@ -2,6 +2,7 @@ use std::{
     fs::File,
     path::PathBuf,
     sync::Arc,
+    time::{Duration, Instant},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -10,7 +11,10 @@ use cap_media::{
     encoders::{H264Encoder, MP4File, OggFile, OpusEncoder},
     feeds::{AudioInputFeed, CameraFeed},
     pipeline::{Pipeline, RealTimeClock},
-    sources::{AudioInputSource, CameraSource, ScreenCaptureSource, ScreenCaptureTarget},
+    platform::bring_window_to_focus,
+    sources::{
+        global_start_time, AudioInputSource, CameraSource, ScreenCaptureSource, ScreenCaptureTarget,
+    },
     MediaError,
 };
 use cap_project::{CursorEvents, StudioRecordingMeta};
@@ -20,6 +24,7 @@ use tokio::sync::{oneshot, Mutex};
 use tracing::{debug, error, info, instrument::WithSubscriber, trace, Instrument};
 use tracing_subscriber::{layer::SubscriberExt, Layer};
 
+// use crate::   platform;
 use crate::{
     capture_pipeline::{create_screen_capture, MakeCapturePipeline},
     cursor::{spawn_cursor_recorder, CursorActor, Cursors},
@@ -66,6 +71,7 @@ struct StudioRecordingPipeline {
     pub audio_output_path: Option<PathBuf>,
     pub camera: Option<CameraPipelineInfo>,
     pub cursor: Option<CursorPipeline>,
+    pub first_frame_unix_time: Option<f64>, // Add this field
 }
 
 struct CursorPipeline {
@@ -149,7 +155,6 @@ pub async fn spawn_studio_recording_actor(
             let cursors_dir = ensure_dir(&content_dir.join("cursors"))?;
 
             let screen_source = create_screen_capture(&options.capture_target, false, false, 120)?;
-
             debug!("screen capture: {screen_source:#?}");
 
             if let Some(camera_feed) = &camera_feed {
@@ -233,7 +238,21 @@ pub async fn spawn_studio_recording_actor(
                                         segment_start_time: f64,
                                     ) -> Result<(Cursors, u32), RecordingError>
                                     {
+                                        // print segment_start_time
+                                        println!(
+                                            "segment_start_time shutdown: {:?}",
+                                            segment_start_time
+                                        );
+
+                                        unsafe {
+                                            println!(
+                                                "global_start_time in shutdown: {:?}",
+                                                global_start_time
+                                            );
+                                        }
                                         pipeline.inner.shutdown().await?;
+                                        let segment_start_time =
+                                            unsafe { global_start_time.clone() };
 
                                         let segment_stop_time = current_time_f64();
 
@@ -241,11 +260,30 @@ pub async fn spawn_studio_recording_actor(
                                             if let Some(actor) = cursor.actor.take() {
                                                 let res = actor.stop().await;
 
+                                                // Recompute process_time_ms for each click and move event
+                                                let mut clicks = res.clicks;
+                                                let mut moves = res.moves;
+                                                println!("moves: {:?}", &moves[..3]);
+
+                                                for click in &mut clicks {
+                                                    click.process_time_ms = (click.unix_time_ms)
+                                                        - (segment_start_time * 1000.0);
+                                                }
+                                                for move_event in &mut moves {
+                                                    move_event.process_time_ms = (move_event
+                                                        .unix_time_ms)
+                                                        - (segment_start_time * 1000.0);
+                                                }
+
+                                                // print first 3 clicks and moves
+                                                // println!("clicks: {:?}", &clicks[..3]);
+                                                println!("moves: {:?}", &moves[..3]);
+
                                                 std::fs::write(
                                                     &cursor.output_path,
                                                     serde_json::to_string_pretty(&CursorEvents {
-                                                        clicks: res.clicks,
-                                                        moves: res.moves,
+                                                        clicks,
+                                                        moves,
                                                     })?,
                                                 )?;
 
@@ -512,6 +550,8 @@ async fn create_segment_pipeline<TCaptureFormat: MakeCapturePipeline>(
     trace!("preparing segment pipeline {index}");
 
     let screen_bounds = screen_source.get_bounds();
+    let maybe_capture_window_id = screen_source.get_window_id();
+
     pipeline_builder = TCaptureFormat::make_capture_pipeline(
         pipeline_builder,
         screen_source,
@@ -578,6 +618,19 @@ async fn create_segment_pipeline<TCaptureFormat: MakeCapturePipeline>(
 
     let (mut pipeline, pipeline_done_rx) = pipeline_builder.build().await?;
 
+    // if let Some(window_id) = maybe_capture_window_id {
+    //     // print instant
+    //     println!(
+    //         "Starting bring_window_to_focus instant start: {:?}",
+    //         Instant::now()
+    //     );
+    //     bring_window_to_focus(window_id);
+    //     println!(
+    //         "Starting bring_window_to_focus instant end: {:?}",
+    //         Instant::now()
+    //     );
+    // }
+
     let cursor = FLAGS.record_mouse_state.then(|| {
         let cursor = spawn_cursor_recorder(
             screen_bounds,
@@ -592,7 +645,11 @@ async fn create_segment_pipeline<TCaptureFormat: MakeCapturePipeline>(
         }
     });
 
+    /// print time  current instannt
+    println!("current instant before pipeline play: {:?}", Instant::now());
+
     pipeline.play().await?;
+    println!("current instant after pipeline play: {:?}", Instant::now());
 
     info!("pipeline playing");
 
@@ -603,6 +660,7 @@ async fn create_segment_pipeline<TCaptureFormat: MakeCapturePipeline>(
             audio_output_path,
             camera,
             cursor,
+            first_frame_unix_time: None, // Initialize the new field
         },
         pipeline_done_rx,
     ))

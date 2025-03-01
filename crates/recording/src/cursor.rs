@@ -53,6 +53,8 @@ pub fn spawn_cursor_recorder(
     let stop_signal = Arc::new(AtomicBool::new(false));
     let (tx, rx) = oneshot::channel();
 
+    /// print current instant
+    println!("current instant spawn_cursor_recorder: {:?}", Instant::now());
     spawn_actor({
         let stop_signal = stop_signal.clone();
         async move {
@@ -69,11 +71,21 @@ pub fn spawn_cursor_recorder(
             // Create cursors directory if it doesn't exist
             std::fs::create_dir_all(&cursors_dir).unwrap();
             let start_time = Instant::now();
+            let mut is_first_frame = true; // Add this flag
 
             while !stop_signal.load(std::sync::atomic::Ordering::Relaxed) {
                 let elapsed = start_time.elapsed().as_secs_f64() * 1000.0;
-                let mouse_state = device_state.get_mouse();
                 let unix_time = chrono::Utc::now().timestamp_millis() as f64;
+
+                /// print if is_first_frame
+                if is_first_frame  {
+                    println!("First cursor frame time elapsed: {:?}", elapsed);
+                    println!("unix_time first cursor: {:?}", unix_time);
+                    // start 
+                    println!("start cursor: {:?}", start_time);
+                    is_first_frame = false;
+                }
+                let mouse_state = device_state.get_mouse();
 
                 let cursor_data = get_cursor_image_data();
                 let cursor_id = if let Some(data) = cursor_data {
@@ -320,7 +332,7 @@ pub fn spawn_cursor_recorder(
                 }
 
                 last_mouse_state = mouse_state;
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                tokio::time::sleep(Duration::from_millis(1)).await;
             }
 
             tx.send(response).ok();
