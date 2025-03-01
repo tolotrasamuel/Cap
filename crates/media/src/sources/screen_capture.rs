@@ -13,6 +13,7 @@ use scap::{
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{collections::HashMap, ops::ControlFlow, sync::Arc};
 use tracing::{debug, error, info, trace, warn};
 
@@ -122,7 +123,7 @@ impl ScreenCaptureTarget {
 // }
 
 pub struct ScreenCaptureSource<TCaptureFormat: ScreenCaptureFormat> {
-    target: ScreenCaptureTarget,
+    pub target: ScreenCaptureTarget,
     output_resolution: Option<ScapResolution>,
     output_type: Option<FrameType>,
     fps: u32,
@@ -244,6 +245,13 @@ impl<TCaptureFormat: ScreenCaptureFormat> ScreenCaptureSource<TCaptureFormat> {
         Ok(this)
     }
 
+    pub fn get_window_id(&self) -> Option<u32> {
+        match &self.target {
+            ScreenCaptureTarget::Window(window) => Some(window.id),
+            _ => None,
+        }
+    }
+
     pub fn get_bounds(&self) -> &Bounds {
         &self.bounds
     }
@@ -341,7 +349,8 @@ impl<TCaptureFormat: ScreenCaptureFormat> ScreenCaptureSource<TCaptureFormat> {
 
         Ok(Options {
             fps: self.fps,
-            show_cursor: self.force_show_cursor || !FLAGS.record_mouse_state,
+            // show_cursor: self.force_show_cursor || !FLAGS.record_mouse_state,
+            show_cursor: true,
             show_highlight: false,
             target: Some(target.clone()),
             crop_area,
@@ -470,6 +479,7 @@ impl PipelineSourceTask for ScreenCaptureSource<AVFrameCapture> {
     }
 }
 
+pub static mut global_start_time: f64 = 0.0;
 fn inner<T: ScreenCaptureFormat>(
     source: &mut ScreenCaptureSource<T>,
     ready_signal: crate::pipeline::task::PipelineReadySignal,
@@ -502,6 +512,7 @@ fn inner<T: ScreenCaptureFormat>(
     ready_signal.send(Ok(())).ok();
 
     let t = std::time::Instant::now();
+    let mut is_first_frame = true; // Add this flag
 
     loop {
         match control_signal.last() {
@@ -516,7 +527,15 @@ fn inner<T: ScreenCaptureFormat>(
             Some(Control::Play) => {
                 if !capturing {
                     if let Some(window_id) = maybe_capture_window_id {
+                        println!(
+                            "Starting bring_window_to_focus instant start: {:?}",
+                            Instant::now()
+                        );
                         crate::platform::bring_window_to_focus(window_id);
+                        println!(
+                            "Starting bring_window_to_focus instant end: {:?}",
+                            Instant::now()
+                        );
                     }
                     capturer.start_capture();
                     capturing = true;
@@ -533,11 +552,30 @@ fn inner<T: ScreenCaptureFormat>(
                     }
                     None => {}
                 }
+
+                if is_first_frame {
+                    let unix_time = current_time_f64();
+                    if let Ok(Frame::BGRA(frame)) = capturer.get_next_frame() {
+                        let raw_timestamp = RawNanoseconds(frame.display_time);
+                        println!("First frame timestamp: {:?}", raw_timestamp);
+                        println!("First frame unix time: {:?}", unix_time);
+                        // source.first_frame_unix_time = Some(unix_time); // Set the value
+                        unsafe { global_start_time = unix_time };
+                        is_first_frame = false;
+                    }
+                }
             }
         }
     }
 
     info!("Shut down screen capture source thread.");
+}
+
+fn current_time_f64() -> f64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs_f64()
 }
 
 #[derive(Debug)]

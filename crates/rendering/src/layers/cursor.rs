@@ -359,6 +359,8 @@ fn interpolate_cursor(
         }
     }
 
+    /// print if raw
+    println!("raw interpolation: {}", raw);
     if raw {
         let pos = cursor.moves.windows(2).enumerate().find_map(|(i, chunk)| {
             if time_ms >= chunk[0].process_time_ms && time_ms < chunk[1].process_time_ms {

@@ -7,7 +7,8 @@ pub struct Flags {
 }
 
 pub const FLAGS: Flags = Flags {
-    record_mouse_state: cfg!(debug_assertions),
+    // record_mouse_state: cfg!(debug_assertions),
+    record_mouse_state: true,
     system_audio_recording: cfg!(debug_assertions),
     split: false,
 };
