@@ -69,6 +69,7 @@ pub fn spawn_cursor_recorder(
             };
 
             let start_time = Instant::now();
+            let start_time = Instant::now();
 
             while !stop_signal.load(std::sync::atomic::Ordering::Relaxed) {
                 let elapsed = start_time.elapsed().as_secs_f64() * 1000.0;
@@ -163,13 +164,18 @@ pub fn spawn_cursor_recorder(
                     };
 
                     #[cfg(target_os = "macos")]
+                    println!("macos screen_bounds: {:?}", screen_bounds);
                     let (mouse_x, mouse_y) = {
                         let primary_bounds = cap_media::platform::primary_monitor_bounds();
 
                         let mouse_x = mouse_x - screen_bounds.x as i32;
-                        let mouse_y = mouse_y
-                            + (screen_bounds.y + screen_bounds.height - primary_bounds.height)
-                                as i32;
+                        let mouse_y = mouse_y - screen_bounds.y as i32;
+                            // - (screen_bounds.y + screen_bounds.height - primary_bounds.height)
+                                // as i32;
+
+                        println!("macos primary bounds: {:?}", primary_bounds);
+                        println!("macos mouse_x: {:?}", mouse_x);
+                        println!("macos mouse_y: {:?}", mouse_y);
 
                         (mouse_x, mouse_y)
                     };
