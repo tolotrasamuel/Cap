@@ -58,7 +58,6 @@ pub fn spawn_cursor_recorder(
         async move {
             let device_state = DeviceState::new();
             let mut last_mouse_state = device_state.get_mouse();
-            let start_time = Instant::now();
 
             let mut response = CursorActorResponse {
                 cursors: prev_cursors,
@@ -69,10 +68,11 @@ pub fn spawn_cursor_recorder(
 
             // Create cursors directory if it doesn't exist
             std::fs::create_dir_all(&cursors_dir).unwrap();
+            let start_time = Instant::now();
 
             while !stop_signal.load(std::sync::atomic::Ordering::Relaxed) {
-                let mouse_state = device_state.get_mouse();
                 let elapsed = start_time.elapsed().as_secs_f64() * 1000.0;
+                let mouse_state = device_state.get_mouse();
                 let unix_time = chrono::Utc::now().timestamp_millis() as f64;
 
                 let cursor_data = get_cursor_image_data();
@@ -163,13 +163,18 @@ pub fn spawn_cursor_recorder(
                     };
 
                     #[cfg(target_os = "macos")]
+                    println!("macos screen_bounds: {:?}", screen_bounds);
                     let (mouse_x, mouse_y) = {
                         let primary_bounds = cap_media::platform::primary_monitor_bounds();
 
                         let mouse_x = mouse_x - screen_bounds.x as i32;
-                        let mouse_y = mouse_y
-                            + (screen_bounds.y + screen_bounds.height - primary_bounds.height)
-                                as i32;
+                        let mouse_y = mouse_y - screen_bounds.y as i32;
+                            // - (screen_bounds.y + screen_bounds.height - primary_bounds.height)
+                                // as i32;
+
+                        println!("macos primary bounds: {:?}", primary_bounds);
+                        println!("macos mouse_x: {:?}", mouse_x);
+                        println!("macos mouse_y: {:?}", mouse_y);
 
                         (mouse_x, mouse_y)
                     };
