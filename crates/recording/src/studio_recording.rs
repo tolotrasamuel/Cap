@@ -265,7 +265,8 @@ pub async fn spawn_studio_recording_actor(
                                                 for move_event in &mut moves {
                                                     move_event.process_time_ms = (move_event
                                                         .unix_time_ms)
-                                                        - (segment_start_time * 1000.0);
+                                                        - (segment_start_time * 1000.0)
+                                                        + 50.0;
                                                 }
 
                                                 // print first 3 clicks and moves

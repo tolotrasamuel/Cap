@@ -86,7 +86,10 @@ pub fn spawn_cursor_recorder(
                     println!("start cursor: {:?}", start_time);
                     is_first_frame = false;
                 }
+
+                let now = Instant::now();
                 let mouse_state = device_state.get_mouse();
+                println!("getting mouse state took: {:?}", now.elapsed());
 
                 let cursor_data = get_cursor_image_data();
                 let cursor_id = if let Some(data) = cursor_data {

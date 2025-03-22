@@ -181,6 +181,7 @@ impl CursorLayer {
             return;
         };
 
+        let cursor_texture_size = cursor_texture.inner.size();
         let cursor_size = cursor_texture.inner.size();
         let aspect_ratio = cursor_size.width as f32 / cursor_size.height as f32;
 
@@ -195,11 +196,19 @@ impl CursorLayer {
             STANDARD_CURSOR_HEIGHT * cursor_size_percentage,
         ];
 
+        /// print normalized_size
+        println!("Normalized Size: {:?}", normalized_size);
         let position = interpolated_cursor
             .position
             .to_frame_space(&constants.options, &uniforms.project, resolution_base)
             .to_zoomed_frame_space(&constants.options, &uniforms.project, resolution_base, zoom);
-        let relative_position = [position.x as f32, position.y as f32];
+        // let relative_position = [position.x as f32, position.y as f32];
+
+        // print cursor texture size
+        println!("Cursor Texture Size: {:?}", cursor_size);
+        // print position vs relative position vs texture hotspot
+        println!("Position: {:?}", position);
+        println!("Texture Hotspot: {:?}", cursor_texture.hotspot);
 
         fn smoothstep(low: f32, high: f32, v: f32) -> f32 {
             let t = f32::clamp((v - low) / (high - low), 0.0, 1.0);
@@ -219,6 +228,32 @@ impl CursorLayer {
         let display_size =
             ProjectUniforms::display_size(&constants.options, &uniforms.project, resolution_base);
 
+        let cursor_size = cursor_size_percentage
+            * click_scale
+            * zoom.display_amount() as f32
+            * (display_size.coord.x as f32 / output_size.0 as f32);
+
+        println!("Cursor Size: {}", cursor_size);
+        // display_size
+        println!("Display Size: {:?}", display_size);
+        println!("Output Size: {:?}", output_size);
+        println!("Zoom Display Amount: {}", zoom.display_amount());
+        println!("Cursor Size Percentage: {}", cursor_size_percentage);
+        println!("Click Scale: {}", click_scale);
+        let relative_position = [
+            // position.x as f32
+            // -normalized_size[0] as f32 * (cursor_texture.hotspot.x) as f32 * cursor_size,
+            // position.x as f32 - STANDARD_CURSOR_HEIGHT * aspect_ratio as f32 * cursor_texture.hotspot.x as f32 ,
+            // position.x as f32, - normalized_size[0] as f32 * cursor_texture.hotspot.x as f32 ,
+            position.x as f32,
+            position.y as f32
+                - normalized_size[1] as f32 * cursor_texture.hotspot.y as f32 * cursor_size,
+        ];
+        println!("Relative Position: {:?}", relative_position);
+
+        // print cursor_texture_size
+        println!("Cursor Texture Size: {:?}", cursor_texture_size);
+
         let uniforms = CursorUniforms {
             position: [relative_position[0], relative_position[1], 0.0, 0.0],
             size: [normalized_size[0], normalized_size[1], 0.0, 0.0],
@@ -229,10 +264,7 @@ impl CursorLayer {
                 0.0,
             ],
             screen_bounds: uniforms.display.target_bounds,
-            cursor_size: cursor_size_percentage
-                * click_scale
-                * zoom.display_amount() as f32
-                * (display_size.coord.x as f32 / output_size.0 as f32),
+            cursor_size: cursor_size,
             last_click_time,
             velocity,
             motion_blur_amount,
