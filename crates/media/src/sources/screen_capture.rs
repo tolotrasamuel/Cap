@@ -247,7 +247,7 @@ impl<TCaptureFormat: ScreenCaptureFormat> ScreenCaptureSource<TCaptureFormat> {
 
     pub fn get_window_id(&self) -> Option<u32> {
         match &self.target {
-            ScreenCaptureTarget::Window(window) => Some(window.id),
+            ScreenCaptureTarget::Window { id } => Some(*id),
             _ => None,
         }
     }
@@ -555,7 +555,7 @@ fn inner<T: ScreenCaptureFormat>(
 
                 if is_first_frame {
                     let unix_time = current_time_f64();
-                    if let Ok(Frame::BGRA(frame)) = capturer.get_next_frame() {
+                    if let Ok(Frame::Video(VideoFrame::BGRA(frame))) = capturer.get_next_frame() {
                         let raw_timestamp = RawNanoseconds(frame.display_time);
                         println!("First frame timestamp: {:?}", raw_timestamp);
                         println!("First frame unix time: {:?}", unix_time);

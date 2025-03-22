@@ -190,7 +190,7 @@ pub async fn render_video_to_channel(
             .await
         {
             let uniforms =
-                ProjectUniforms::new(&constants, &project, frame_number, fps, resolution_base);
+                ProjectUniforms::new(&constants, &project, frame_number, fps, resolution_base,&segment.cursor);
             let frame = frame_renderer
                 .render(segment_frames, uniforms, &segment.cursor)
                 .await?;
@@ -665,6 +665,7 @@ impl ProjectUniforms {
         frame_number: u32,
         fps: u32,
         resolution_base: XY<u32>,
+        cursor_events: &CursorEvents,
     ) -> Self {
         let options = &constants.options;
         let output_size = Self::get_output_size(options, project, resolution_base);
