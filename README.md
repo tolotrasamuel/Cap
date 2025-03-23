@@ -51,3 +51,9 @@ We use a combination of Rust, React (Next.js), TypeScript, Tauri, Drizzle (ORM),
 # Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for more information. This guide is a work in progress, and is updated regularly as the app matures.
+
+
+# display real cursor in recording. 
+in /Volumes/128gbApfsSSK/RustProjects/Cap/crates/media/src/sources/screen_capture.rs
+ uncomment this line to display real cursor in recording. 
+ // show_cursor: true, // !debug [samuel]

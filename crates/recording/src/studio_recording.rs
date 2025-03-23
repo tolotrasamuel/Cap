@@ -760,7 +760,7 @@ async fn create_segment_pipeline(
     println!("current instant before pipeline play: {:?}", Instant::now());
 
     pipeline.play().await?;
-    println!("current instant after pipeline play: {:?}", Instant::now());
+    println!("current  instant after pipeline play: {:?}", Instant::now());
 
     info!("pipeline playing");
 

@@ -350,7 +350,7 @@ impl<TCaptureFormat: ScreenCaptureFormat> ScreenCaptureSource<TCaptureFormat> {
         Ok(Options {
             fps: self.fps,
             show_cursor: self.force_show_cursor || !FLAGS.record_mouse_state,
-            // show_cursor: true,
+            // show_cursor: true, // !debug [samuel] uncomment this line to display cursor in recording. 
             show_highlight: false,
             target: Some(target.clone()),
             crop_area,
